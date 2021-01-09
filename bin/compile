@@ -1,0 +1,69 @@
+#!/bin/bash
+
+indent() {
+  sed -u 's/^/       /'
+}
+
+echo "-----> Installing ecCodes"
+
+BUILD_DIR=$1
+CACHE_DIR=$2
+VENDOR_DIR="$BUILD_DIR/vendor"
+CACHE_ENABLED=true
+ECCODES_VERSION="2.19.1" # https://confluence.ecmwf.int/display/ECC/ecCodes+Home
+ECCODES_TAR="eccodes-$ECCODES_VERSION-Source.tar.gz"
+ECCODES_DIR="eccodes-$ECCODES_VERSION-Source"
+ECCODES_INSTALL_DIR="$VENDOR_DIR/$ECCODES_DIR"
+ECCODES_URL="https://confluence.ecmwf.int/download/attachments/45757960/$ECCODES_TAR"
+ECCODES_CACHE_FILE="$CACHE_DIR/$ECCODES_TAR"
+
+if [ ! -f "$ECCODES_CACHE_FILE" ] || [ $CACHE_ENABLED != 'true' ]; then
+  echo "-----> Downloading ecCodes from $ECCODES_URL"
+  wget $ECCODES_URL -P $VENDOR_DIR | indent
+
+  echo "-----> Extracting ecCodes from $VENDOR_DIR/$ECCODES_TAR"
+  if [ ! -f $VENDOR_DIR/$ECCODES_TAR ]; then
+    echo "Error: Unable to download ecCodes" | indent
+    ls $VENDOR_DIR | indent
+    exit 1;
+  fi
+
+  tar xvf $VENDOR_DIR/$ECCODES_TAR | indent
+
+  echo "-----> Building ecCodes"
+  mkdir build
+  cd build
+  cmake -DENABLE_FORTRAN=OFF -DCMAKE_INSTALL_PREFIX=$ECCODES_INSTALL_DIR "../$ECCODES_DIR"
+  make
+  ctest
+  make install
+  cd ..
+
+  # Cache for future deploys
+  echo "-----> Caching ecCodes installation"
+  cd $VENDOR_DIR
+  tar czf eccodes.tar.gz $ECCODES_DIR
+
+  if [ ! -d $CACHE_DIR ]; then
+    mkdir -p $CACHE_DIR
+  fi
+
+  mv eccodes.tar.gz $ECCODES_CACHE_FILE
+else
+  # Cache exists, extract it
+  echo "-----> Extracting ecCodes $ECCODES_CACHE_FILE => $VENDOR_DIR"
+  mkdir -p $VENDOR_DIR
+  tar xzf $ECCODES_CACHE_FILE -C $VENDOR_DIR
+fi
+
+# Update PATH and LD_LIBRARY_PATH
+echo "-----> Updating environment variables"
+PROFILE_PATH="$BUILD_DIR/.profile.d/eccodes.sh"
+ACTUAL_INSTALL_PATH="$HOME/vendor/$ECCODES_DIR"
+mkdir -p $(dirname $PROFILE_PATH)
+
+echo "export PATH=$ACTUAL_INSTALL_PATH/bin:\$PATH" >> $PROFILE_PATH
+echo "export LD_LIBRARY_PATH=$ACTUAL_INSTALL_PATH/lib:\$LD_LIBRARY_PATH:/usr/local/lib" >> $PROFILE_PATH
+echo "export MAGICK_CONFIGURE_PATH=$ACTUAL_INSTALL_PATH" >> $PROFILE_PATH
+echo "export ECCODES_DEFINITION_PATH=$HOME/vendor/$ECCODES_DIR/share/eccodes/definitions" >> $PROFILE_PATH
+echo "-----> Done updating environment variables. All set for ecCodes."
