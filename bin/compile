@@ -10,7 +10,7 @@ BUILD_DIR=$1
 CACHE_DIR=$2
 VENDOR_DIR="$BUILD_DIR/vendor"
 CACHE_ENABLED=true
-ECCODES_VERSION="2.19.1" # https://confluence.ecmwf.int/display/ECC/ecCodes+Home
+ECCODES_VERSION="2.18.0" # https://confluence.ecmwf.int/display/ECC/ecCodes+Home
 ECCODES_TAR="eccodes-$ECCODES_VERSION-Source.tar.gz"
 ECCODES_DIR="eccodes-$ECCODES_VERSION-Source"
 ECCODES_INSTALL_DIR="$VENDOR_DIR/$ECCODES_DIR"
@@ -28,7 +28,7 @@ if [ ! -f "$ECCODES_CACHE_FILE" ] || [ $CACHE_ENABLED != 'true' ]; then
     exit 1;
   fi
 
-  tar xvf $VENDOR_DIR/$ECCODES_TAR | indent
+  tar -xzf $VENDOR_DIR/$ECCODES_TAR | indent
 
   echo "-----> Building ecCodes"
   mkdir build
@@ -53,7 +53,7 @@ else
   # Cache exists, extract it
   echo "-----> Extracting ecCodes $ECCODES_CACHE_FILE => $VENDOR_DIR"
   mkdir -p $VENDOR_DIR
-  tar xzf $ECCODES_CACHE_FILE -C $VENDOR_DIR
+  tar -xzf $ECCODES_CACHE_FILE -C $VENDOR_DIR | indent
 fi
 
 # Update PATH and LD_LIBRARY_PATH
@@ -66,4 +66,13 @@ echo "export PATH=$ACTUAL_INSTALL_PATH/bin:\$PATH" >> $PROFILE_PATH
 echo "export LD_LIBRARY_PATH=$ACTUAL_INSTALL_PATH/lib:\$LD_LIBRARY_PATH:/usr/local/lib" >> $PROFILE_PATH
 echo "export MAGICK_CONFIGURE_PATH=$ACTUAL_INSTALL_PATH" >> $PROFILE_PATH
 echo "export ECCODES_DEFINITION_PATH=$HOME/vendor/$ECCODES_DIR/share/eccodes/definitions" >> $PROFILE_PATH
+
+echo ""
+echo "       ECCODES_VERSION $ECCODES_VERSION"
+echo "       ECCODES_INSTALL_DIR $ECCODES_INSTALL_DIR"
+echo "       ECCODES_CACHE_FILE $ECCODES_CACHE_FILE"
+echo "       PROFILE_PATH $PROFILE_PATH"
+echo ""
+
 echo "-----> Done updating environment variables. All set for ecCodes."
+echo ""
